@@ -1,0 +1,102 @@
+:root { color-scheme: dark; }
+
+body {
+  background-image:
+    radial-gradient(1200px 500px at 10% -10%, rgba(225, 6, 0, 0.10), transparent 60%),
+    radial-gradient(900px 400px at 110% 0%, rgba(99, 102, 241, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+.brand-mark {
+  width: 28px; height: 20px; display: inline-block;
+  background: linear-gradient(135deg, #e10600 0 55%, transparent 55% 62%, #e10600 62%);
+  transform: skewX(-18deg); border-radius: 3px;
+}
+
+.num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.panel {
+  background: linear-gradient(180deg, rgba(30, 36, 50, 0.55), rgba(16, 19, 27, 0.75));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.9rem;
+}
+
+.kicker {
+  text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.68rem; font-weight: 700; color: #94a3b8;
+}
+
+/* Fülek */
+.tab-btn { position: relative; color: #94a3b8; transition: color .15s; white-space: nowrap; }
+.tab-btn:hover { color: #e2e8f0; }
+.tab-btn.active { color: #fff; }
+.tab-btn.active::after {
+  content: ""; position: absolute; left: 10%; right: 10%; bottom: -1px; height: 3px;
+  background: #e10600; border-radius: 3px 3px 0 0;
+}
+
+/* Táblázatok */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: #10131b; color: #94a3b8; font-weight: 700; font-size: .7rem;
+  text-transform: uppercase; letter-spacing: .08em; padding: .65rem .6rem; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.data-table tbody td { padding: .55rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04); }
+.data-table tbody tr:hover td { background: rgba(255,255,255,.025); }
+
+.team-bar { width: 4px; height: 22px; border-radius: 2px; display: inline-block; }
+
+/* Gumi jelvény – F1 TV stílus: sötét kör színes gyűrűvel */
+.tyre {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9999px; font-weight: 900; line-height: 1;
+  background: #0b0d12; border: 3px solid currentColor;
+  font-family: "Titillium Web", sans-serif;
+}
+.tyre-sm { width: 22px; height: 22px; font-size: 11px; border-width: 2.5px; }
+.tyre-md { width: 28px; height: 28px; font-size: 13px; }
+
+/* Kiemelések */
+.cell-purple { color: #d8b4fe; background: rgba(168, 85, 247, .16) !important; font-weight: 700; }
+.cell-green  { color: #86efac; font-weight: 600; }
+.cell-invalid { color: #f87171; }
+.row-invalid td { color: #fca5a5; }
+.row-invalid td.lap-time { text-decoration: line-through; text-decoration-color: rgba(248,113,113,.6); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .65rem; border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); font-size: .8rem;
+  color: #94a3b8; transition: all .12s; cursor: pointer; user-select: none;
+}
+.chip:hover { border-color: rgba(255,255,255,.2); color: #e2e8f0; }
+.chip.on { color: #fff; background: rgba(255,255,255,.07); border-color: var(--c, #fff); box-shadow: inset 0 0 0 1px var(--c, #fff); }
+.chip .dot { width: 9px; height: 9px; border-radius: 9999px; background: var(--c, #888); }
+
+/* Gantt gumietapok */
+.stint {
+  position: absolute; top: 3px; bottom: 3px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  font-size: 11px; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25);
+}
+.pit-marker {
+  position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: .85;
+  border-radius: 2px; transform: translateX(-1px);
+}
+
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] .chev { transform: rotate(90deg); }
+.chev { transition: transform .15s; }
+
+.race-row { transition: transform .12s, border-color .12s, background .12s; }
+.race-row:hover { transform: translateY(-1px); border-color: rgba(225, 6, 0, .45); }
+
+::-webkit-scrollbar { height: 10px; width: 10px; }
+::-webkit-scrollbar-track { background: #0a0c12; }
+::-webkit-scrollbar-thumb { background: #2a3244; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #3a4459; }
+
+.fade-in { animation: fade .25s ease-out; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

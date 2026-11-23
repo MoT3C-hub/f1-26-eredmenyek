@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="hu" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F1 26 Eredmények · Telemetria Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e10600'/><path d='M7 22l6-12h12l-2 4h-8l-1 2h7l-2 4h-7l-1 2z' fill='white'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Titillium Web"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            f1red: '#e10600',
+            ink: { 950: '#05060a', 900: '#0a0c12', 800: '#10131b', 700: '#161a25', 600: '#1e2432', 500: '#2a3244', 400: '#3a4459' },
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="./static/css/app.css?v=4">
+</head>
+<body class="bg-ink-950 text-slate-200 font-sans antialiased min-h-screen flex flex-col">
+  <header class="sticky top-0 z-30 border-b border-white/5 bg-ink-950/85 backdrop-blur">
+    <div class="h-1 w-full bg-gradient-to-r from-f1red via-red-500 to-transparent"></div>
+    <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="#/" class="flex items-center gap-3 group">
+        <span class="brand-mark"></span>
+        <span class="font-black tracking-wider text-lg uppercase italic">F1<span class="text-f1red">26</span>
+          <span class="text-slate-400 font-semibold not-italic normal-case tracking-normal text-base ml-1">Eredményrögzítő</span></span>
+      </a>
+      <nav class="flex items-center gap-1 text-sm">
+        <a href="#/" class="px-3 py-1.5 rounded-md text-slate-300 hover:text-white hover:bg-white/5 font-semibold">Futamok</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="flex-1 w-full max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-center py-24 text-slate-500">Betöltés…</div>
+  </main>
+
+  <footer class="border-t border-white/5 py-4 text-center text-xs text-slate-500">
+    F1 26 UDP telemetria · nem hivatalos rajongói eszköz · az adatok a játék UDP adatfolyamából származnak
+  </footer>
+
+  <script>window.__STATIC_MODE__ = true;</script>
+  <script type="module" src="./static/js/app.js?v=4"></script>
+</body>
+</html>
