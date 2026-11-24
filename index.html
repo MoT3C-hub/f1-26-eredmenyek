@@ -27,7 +27,7 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="./static/css/app.css?v=5">
+  <link rel="stylesheet" href="./static/css/app.css?v=b0446827">
 </head>
 <body class="bg-ink-950 text-slate-200 font-sans antialiased min-h-screen flex flex-col">
   <header class="sticky top-0 z-30 border-b border-white/5 bg-ink-950/85 backdrop-blur">
@@ -52,7 +52,15 @@
     F1 26 UDP telemetria · nem hivatalos rajongói eszköz · az adatok a játék UDP adatfolyamából származnak
   </footer>
 
+  <script>
+    window.addEventListener('error', function (e) {
+      var el = document.getElementById('app');
+      if (el && el.textContent.indexOf('Betöltés') !== -1) {
+        el.innerHTML = '<div class="panel p-6 border-red-500/30 text-red-300">Betöltési hiba: ' + (e.message || 'ismeretlen hiba') + '</div>';
+      }
+    });
+  </script>
   <script>window.__STATIC_MODE__ = true;</script>
-  <script type="module" src="./static/js/app.js?v=5"></script>
+  <script type="module" src="./static/js/bundle.js?v=8702e1aa"></script>
 </body>
 </html>
