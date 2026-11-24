@@ -1,17 +1,21 @@
 // Verseny részletező: fejléc + 4 fül
 
-import { api } from '../api.js?v=4';
-import { buildContext } from '../analysis.js?v=4';
-import { esc, fmtDate, fmtLap, WEATHER_ICONS, teamColor, stopwatchIcon } from '../format.js?v=4';
-import { renderClassification } from './tabs/classification.js?v=4';
-import { renderLapAnalysis } from './tabs/laps.js?v=4';
-import { renderTyreStints } from './tabs/tyres.js?v=4';
-import { renderStats } from './tabs/stats.js?v=4';
+import { api } from '../api.js?v=5';
+import { buildContext } from '../analysis.js?v=5';
+import { esc, fmtDate, fmtLap, WEATHER_ICONS, teamColor, stopwatchIcon } from '../format.js?v=5';
+import { renderClassification } from './tabs/classification.js?v=5';
+import { renderLapAnalysis } from './tabs/laps.js?v=5';
+import { renderPositions } from './tabs/positions.js?v=5';
+import { renderTyreStints } from './tabs/tyres.js?v=5';
+import { renderEvents } from './tabs/events.js?v=5';
+import { renderStats } from './tabs/stats.js?v=5';
 
 const TABS = [
   { id: 'eredmeny', label: 'Végeredmény', render: renderClassification },
   { id: 'korido', label: 'Köridő-elemző', render: renderLapAnalysis },
+  { id: 'pozicio', label: 'Pozíciógrafikon', render: renderPositions },
   { id: 'gumik', label: 'Gumistratégia', render: renderTyreStints },
+  { id: 'esemenyek', label: 'Események & Speed Trap', render: renderEvents },
   { id: 'statisztika', label: 'Statisztikák', render: renderStats },
 ];
 

@@ -1,10 +1,10 @@
 // 2. fül: Köridő-elemző (interaktív Chart.js vonaldiagram + szűrhető, lenyitható szektortáblázat)
 
 import { esc, fmtLap, fmtSector, tyreBadge } from '../../format.js';
-import { isOutlierLap, median, stintForLap } from '../../analysis.js';
+import { createSafetyCarPlugin, isOutlierLap, median, stintForLap } from '../../analysis.js';
 
 export function renderLapAnalysis(el, ctx) {
-  const { drivers, maxLaps, bestLap, bestSectors, fastest } = ctx;
+  const { drivers, maxLaps, bestLap, bestSectors, fastest, safetyCarPeriods } = ctx;
   const selected = new Set(drivers.slice(0, 4).map((d) => d.car_index));
   let hideOutliers = true;
   let driverFilter = 'all';
@@ -16,7 +16,10 @@ export function renderLapAnalysis(el, ctx) {
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <div class="kicker">Körönkénti tempó</div>
-          <h2 class="text-lg font-bold text-white">Köridő-összehasonlító grafikon</h2>
+          <h2 class="text-lg font-bold text-white flex flex-wrap items-center gap-2">
+            <span>Köridő-összehasonlító grafikon</span>
+            ${safetyCarPeriods.length ? '<span class="px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[11px] font-semibold">SC / VSC jelölve</span>' : ''}
+          </h2>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer select-none">
@@ -75,6 +78,7 @@ export function renderLapAnalysis(el, ctx) {
 
   const canvas = el.querySelector('#lap-chart');
   const labels = Array.from({ length: maxLaps }, (_, i) => `${i + 1}. kör`);
+  const scPlugin = createSafetyCarPlugin(safetyCarPeriods, -1);
 
   function updateChart() {
     const active = drivers.filter((d) => selected.has(d.car_index));
@@ -106,6 +110,7 @@ export function renderLapAnalysis(el, ctx) {
     chart = new Chart(canvas, {
       type: 'line',
       data: { labels, datasets },
+      plugins: [scPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,

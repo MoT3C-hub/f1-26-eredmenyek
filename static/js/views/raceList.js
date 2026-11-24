@@ -1,7 +1,7 @@
 // Futamválasztó oldal
 
-import { api } from '../api.js?v=4';
-import { esc, fmtDate, fmtLap, teamColor, stopwatchIcon, emptyState } from '../format.js?v=4';
+import { api } from '../api.js?v=5';
+import { esc, fmtDate, fmtLap, teamColor, stopwatchIcon, emptyState } from '../format.js?v=5';
 
 export async function renderRaceList(app) {
   app.innerHTML = `<div class="py-24 text-center text-slate-500">Futamok betöltése…</div>`;

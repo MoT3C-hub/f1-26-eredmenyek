@@ -2,9 +2,9 @@
 //   #/                  → futamválasztó
 //   #/race/<uid>/<fül>  → verseny részletező
 
-import { renderRaceList } from './views/raceList.js?v=4';
-import { renderRaceDetail } from './views/raceDetail.js?v=4';
-import { esc } from './format.js?v=4';
+import { renderRaceList } from './views/raceList.js?v=5';
+import { renderRaceDetail } from './views/raceDetail.js?v=5';
+import { esc } from './format.js?v=5';
 
 const app = document.getElementById('app');
 

@@ -26,12 +26,18 @@ function timeCell(d, leader) {
 
 export function renderClassification(el, ctx) {
   const { drivers, leader, fastest } = ctx;
+  const hasSpeedTrap = drivers.some((d) => d.speed_trap_kmh && d.speed_trap_kmh > 0);
+  const maxSpeedTrap = hasSpeedTrap ? Math.max(...drivers.map((d) => d.speed_trap_kmh || 0)) : 0;
 
   const rows = drivers.map((d) => {
     const isFastest = fastest && d.best_lap_time_ms === fastest.ms;
+    const isTopSpeed = hasSpeedTrap && d.speed_trap_kmh === maxSpeedTrap;
+    const warnBadge = d.corner_cutting_warnings > 0
+      ? ` <span class="text-[11px] text-amber-400/90 num" title="${d.corner_cutting_warnings} pályaelhagyási figyelmeztetés">⚠${d.corner_cutting_warnings}</span>`
+      : '';
     const pen = d.penalties_time_s
-      ? `<span class="text-amber-300 font-semibold num">+${d.penalties_time_s} mp</span>${d.num_penalties > 1 ? ` <span class="text-xs text-slate-500">(${d.num_penalties}×)</span>` : ''}`
-      : '<span class="text-slate-600">—</span>';
+      ? `<span class="text-amber-300 font-semibold num">+${d.penalties_time_s} mp</span>${d.num_penalties > 1 ? ` <span class="text-xs text-slate-500">(${d.num_penalties}×)</span>` : ''}${warnBadge}`
+      : (warnBadge ? warnBadge.trim() : '<span class="text-slate-600">—</span>');
     return `
     <tr class="${d._finished ? '' : 'opacity-70'}">
       <td class="num font-bold text-white text-center">${d.position || '—'}</td>
@@ -49,6 +55,7 @@ export function renderClassification(el, ctx) {
       <td class="num whitespace-nowrap ${isFastest ? 'cell-purple rounded' : 'text-slate-300'}">
         ${isFastest ? `<span class="inline-flex items-center gap-1">${stopwatchIcon('w-3.5 h-3.5')}${fmtLap(d.best_lap_time_ms)}</span>` : fmtLap(d.best_lap_time_ms)}
       </td>
+      ${hasSpeedTrap ? `<td class="num whitespace-nowrap ${isTopSpeed ? 'text-cyan-300 font-bold' : 'text-slate-300'}">${d.speed_trap_kmh ? `${d.speed_trap_kmh.toFixed(1)}` : '—'}</td>` : ''}
       <td class="num text-center">${d.num_pit_stops}</td>
       <td><div class="flex items-center gap-1">${d.tyre_stints.map((s) => tyreBadge(s)).join('<span class="text-slate-600 text-xs">›</span>')}</div></td>
       <td class="whitespace-nowrap">${pen}</td>
@@ -62,7 +69,7 @@ export function renderClassification(el, ctx) {
         <table class="data-table text-sm">
           <thead><tr>
             <th class="text-center">Poz.</th><th>Pilóta</th><th>Csapat</th><th>Rajthely</th><th class="text-center">Körök</th>
-            <th>Idő / Hátrány</th><th>Legjobb kör</th><th class="text-center">Kiállás</th><th>Gumik</th><th>Büntetés</th><th class="text-center">Pont</th>
+            <th>Idő / Hátrány</th><th>Legjobb kör</th>${hasSpeedTrap ? '<th>Végseb. (km/h)</th>' : ''}<th class="text-center">Kiállás</th><th>Gumik</th><th>Büntetés</th><th class="text-center">Pont</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
