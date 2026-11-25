@@ -94,6 +94,40 @@ function isRaceSession(sessionType) {
 function isQualiSession(sessionType) {
   return QUALI_SESSION_TYPES.has(Number(sessionType));
 }
+const DEFAULT_LEAGUE_GROUPS = ['Elit', 'Akadémia', 'SportFröcs', 'Veterán'];
+
+const GROUP_PALETTE = [
+  { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-400/30', hex: '#f59e0b' },
+  { bg: 'bg-sky-500/15', text: 'text-sky-300', border: 'border-sky-400/30', hex: '#38bdf8' },
+  { bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-400/30', hex: '#34d399' },
+  { bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-400/30', hex: '#a78bfa' },
+  { bg: 'bg-rose-500/15', text: 'text-rose-300', border: 'border-rose-400/30', hex: '#fb7185' },
+  { bg: 'bg-cyan-500/15', text: 'text-cyan-300', border: 'border-cyan-400/30', hex: '#22d3ee' },
+];
+function getLeagueGroups() {
+  return Array.isArray(window.__LEAGUE_GROUPS__) && window.__LEAGUE_GROUPS__.length
+    ? window.__LEAGUE_GROUPS__
+    : DEFAULT_LEAGUE_GROUPS;
+}
+function groupColor(group) {
+  const idx = getLeagueGroups().indexOf(group);
+  if (idx >= 0) return GROUP_PALETTE[idx % GROUP_PALETTE.length];
+  return { bg: 'bg-slate-700/60', text: 'text-slate-200', border: 'border-white/10', hex: '#94a3b8' };
+}
+function groupSlug(group) {
+  const idx = getLeagueGroups().indexOf(group);
+  return idx >= 0 ? String(idx + 1) : '';
+}
+function groupFromSlug(slug) {
+  const idx = Number(slug) - 1;
+  const groups = getLeagueGroups();
+  return Number.isInteger(idx) && idx >= 0 && idx < groups.length ? groups[idx] : '';
+}
+function groupBadge(group) {
+  if (!group) return '';
+  const st = groupColor(group);
+  return `<span class="px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider text-[10px] ${st.bg} ${st.text} ${st.border}">${esc(group)}</span>`;
+}
 function statusLabel(d) {
   switch (d.result_status) {
     case 3: return 'Célba ért';
@@ -1354,22 +1388,61 @@ function renderStats(el, ctx) {
 
 // --- js/views/raceList.js ---
 // Futamválasztó oldal
-async function renderRaceList(app) {
+async function renderRaceList(app, activeGroup = '') {
   app.innerHTML = `<div class="py-24 text-center text-slate-500">Futamok betöltése…</div>`;
-  const races = await api.listRaces();
+  const allRaces = await api.listRaces();
+  const groups = getLeagueGroups();
 
-  const header = `
-    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 fade-in">
-      <div>
-        <div class="kicker">Futamarchívum</div>
-        <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight">Rögzített futamok</h1>
-        <p class="text-slate-400 mt-1">Válassz egy versenyt a részletes eredményekhez, köridőkhöz és gumistratégiákhoz.</p>
-      </div>
-      <div class="panel px-4 py-2 text-sm"><span class="text-slate-400">Összesen:</span>
-        <span class="num text-white font-bold ml-1">${races.length}</span> <span class="text-slate-400">szakasz</span></div>
+  const countsByGroup = new Map();
+  for (const g of groups) countsByGroup.set(g, 0);
+  for (const r of allRaces) {
+    if (r.league_group && countsByGroup.has(r.league_group)) {
+      countsByGroup.set(r.league_group, countsByGroup.get(r.league_group) + 1);
+    }
+  }
+
+  const races = activeGroup ? allRaces.filter((r) => r.league_group === activeGroup) : allRaces;
+
+  const groupTabs = `
+    <div class="border-b border-white/10 mb-5 overflow-x-auto">
+      <nav class="flex gap-1 md:gap-3 -mb-px">
+        <a href="#/" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${!activeGroup ? 'active' : ''}">
+          <span>Összes</span>
+          <span class="num text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${allRaces.length}</span>
+        </a>
+        ${groups.map((g) => {
+          const slug = groupSlug(g);
+          const count = countsByGroup.get(g) || 0;
+          const st = groupColor(g);
+          const isOn = activeGroup === g;
+          return `
+          <a href="#/csoport/${slug}" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${isOn ? 'active' : ''}">
+            <span class="w-2 h-2 rounded-full" style="background:${st?.hex || '#94a3b8'}"></span>
+            <span>${esc(g)}</span>
+            <span class="num text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${count}</span>
+          </a>`;
+        }).join('')}
+      </nav>
     </div>`;
 
+  const header = `
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-5 fade-in">
+      <div>
+        <div class="kicker">Futamarchívum</div>
+        <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight">${activeGroup ? esc(activeGroup) : 'Rögzített futamok'}</h1>
+        <p class="text-slate-400 mt-1">Válassz egy versenyt a részletes eredményekhez, köridőkhöz és gumistratégiákhoz.</p>
+      </div>
+      <div class="panel px-4 py-2 text-sm"><span class="text-slate-400">${activeGroup ? 'Csoport futamai:' : 'Összesen:'}</span>
+        <span class="num text-white font-bold ml-1">${races.length}</span> <span class="text-slate-400">szakasz</span></div>
+    </div>
+    ${groupTabs}`;
+
   if (!races.length) {
+    if (activeGroup) {
+      app.innerHTML = header + emptyState(`${activeGroup} – még nincs rögzített futam`,
+        'Amint feltöltésre kerül ebbe a csoportba egy időmérő vagy verseny, itt fog megjelenni.');
+      return;
+    }
     app.innerHTML = header + emptyState('Még nincs rögzített futam',
       'Indítsd el az adatgyűjtőt a játék mellett, vagy próbáld ki a szimulációt: <code class="num text-slate-200 bg-white/5 px-1.5 py-0.5 rounded">python collector/main.py --simulate</code>');
     return;
@@ -1385,8 +1458,9 @@ async function renderRaceList(app) {
     <a href="#/race/${esc(r.session_uid)}" class="race-row panel block p-4 md:p-5 fade-in" style="animation-delay:${Math.min(i, 10) * 25}ms">
       <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
         <div class="md:col-span-4 min-w-0">
-          <div class="flex items-center gap-2 text-xs text-slate-400">
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
             <span>${esc(fmtDate(r.recorded_at))}</span>
+            ${groupBadge(r.league_group)}
             <span class="px-1.5 py-0.5 rounded bg-f1red/15 text-red-300 font-bold uppercase tracking-wider text-[10px]">${esc(r.session_type_name)}</span>
           </div>
           <div class="text-xl font-black text-white truncate mt-0.5">${esc(r.track_name)}</div>
@@ -1482,16 +1556,22 @@ function shell(ctx, summary, uid, visibleTabs) {
   const winnerLabel = isRace ? 'Győztes' : (isQuali ? 'Pole pozíció' : 'Leggyorsabb');
   const lapsValue = isRace && s.total_laps ? `${summary.laps_completed} / ${s.total_laps}` : `${summary.laps_completed}`;
 
+  const groupSlugStr = race.league_group ? groupSlug(race.league_group) : '';
+
   return `
   <div data-race-shell="${esc(uid)}">
-    <a href="#/" class="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white mb-4">← Összes futam</a>
+    <div class="flex flex-wrap items-center gap-2 text-sm text-slate-400 mb-4">
+      <a href="#/" class="hover:text-white">← Összes futam</a>
+      ${groupSlugStr ? `<span>·</span><a href="#/csoport/${groupSlugStr}" class="hover:text-white">${esc(race.league_group)}</a>` : ''}
+    </div>
 
     <div class="panel relative overflow-hidden p-5 md:p-6 mb-4">
       <div class="absolute inset-y-0 right-0 w-1/2 opacity-[0.07] pointer-events-none"
            style="background: repeating-linear-gradient(-55deg, #fff 0 18px, transparent 18px 36px)"></div>
       <div class="relative flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2 text-xs text-slate-400">
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            ${groupBadge(race.league_group)}
             <span class="px-1.5 py-0.5 rounded bg-f1red text-white font-bold uppercase tracking-wider text-[10px]">${esc(s.session_type_name)}</span>
             <span>${esc(fmtDate(race.recorded_at))}</span>
             <span class="hidden sm:inline">· UID <span class="num">${esc(race.session_uid)}</span></span>
@@ -1527,7 +1607,8 @@ function shell(ctx, summary, uid, visibleTabs) {
 
 // --- js/app.js ---
 // Belépési pont: egyszerű hash-alapú router
-//   #/                  → futamválasztó
+//   #/                  → összes futam
+//   #/csoport/<sorszám> → csoport futamai
 //   #/race/<uid>/<fül>  → verseny részletező
 
 
@@ -1545,12 +1626,13 @@ let lastView = '';
 async function route() {
   const hash = location.hash || '#/';
   const m = hash.match(/^#\/race\/(\d+)(?:\/([a-z]+))?/);
-  const view = m ? `race:${m[1]}` : 'list';
+  const cg = hash.match(/^#\/csoport\/(\d+)(?:\/)?$/);
+  const view = m ? `race:${m[1]}` : (cg ? `group:${cg[1]}` : 'list');
   if (view !== lastView) window.scrollTo({ top: 0 });
   lastView = view;
   try {
     if (m) await renderRaceDetail(app, m[1], m[2] || 'eredmeny');
-    else await renderRaceList(app);
+    else await renderRaceList(app, cg ? groupFromSlug(cg[1]) : '');
   } catch (err) {
     console.error(err);
     app.innerHTML = `<div class="panel p-8 border-red-500/30">
