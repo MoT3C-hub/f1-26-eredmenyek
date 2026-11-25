@@ -146,6 +146,115 @@ function emptyState(title, text) {
     <div class="text-lg font-bold text-white">${esc(title)}</div>
     <div class="text-slate-400 mt-1">${text}</div></div>`;
 }
+const DEFAULT_CALENDAR = [
+  { slug: 'zandvoort',  round: 1,  date: '2026-11-25', country: 'Hollandia',    circuit: 'Zandvoort',   label: 'Hollandia — Zandvoort',    track_id: 26 },
+  { slug: 'monza',      round: 2,  date: '2026-12-02', country: 'Olaszország',  circuit: 'Monza',       label: 'Olaszország — Monza',      track_id: 11 },
+  { slug: 'baku',       round: 3,  date: '2026-12-09', country: 'Azerbajdzsán', circuit: 'Baku',        label: 'Azerbajdzsán — Baku',      track_id: 20 },
+  { slug: 'singapore',  round: 4,  date: '2026-12-16', country: 'Szingapúr',    circuit: 'Marina Bay',  label: 'Szingapúr — Marina Bay',   track_id: 12 },
+  { slug: 'madrid',     round: 5,  date: '2027-01-06', country: 'Madrid',       circuit: 'Madrid',      label: 'Madrid — Madrid',          track_id: 42 },
+  { slug: 'austin',     round: 6,  date: '2027-01-13', country: 'USA',          circuit: 'Austin',      label: 'USA — Austin',             track_id: 15 },
+  { slug: 'mexico',     round: 7,  date: '2027-01-20', country: 'Mexikó',       circuit: 'Mexikóváros', label: 'Mexikó — Mexikóváros',     track_id: 19 },
+  { slug: 'interlagos', round: 8,  date: '2027-01-27', country: 'Brazília',     circuit: 'Interlagos',  label: 'Brazília — Interlagos',    track_id: 16 },
+  { slug: 'las-vegas',  round: 9,  date: '2027-02-03', country: 'Las Vegas',    circuit: 'Las Vegas',   label: 'Las Vegas — Las Vegas',    track_id: 31 },
+  { slug: 'qatar',      round: 10, date: '2027-02-10', country: 'Katar',        circuit: 'Lusail',      label: 'Katar — Lusail',           track_id: 32 },
+  { slug: 'abu-dhabi',  round: 11, date: '2027-02-17', country: 'Abu-Dzabi',    circuit: 'Yas Marina',  label: 'Abu-Dzabi — Yas Marina',   track_id: 14 },
+];
+function getCalendar() {
+  return Array.isArray(window.__CALENDAR__) && window.__CALENDAR__.length
+    ? window.__CALENDAR__
+    : DEFAULT_CALENDAR;
+}
+function calendarBySlug(slug) {
+  return getCalendar().find((c) => c.slug === slug) || null;
+}
+function calendarForTrackId(trackId) {
+  const tid = Number(trackId);
+  return getCalendar().find((c) => Number(c.track_id) === tid) || null;
+}
+function fmtCalendarDate(isoDate) {
+  const parts = String(isoDate || '').split('-');
+  return parts.length === 3 ? `${parts[1]}.${parts[2]}.` : String(isoDate || '');
+}
+function fmtCalendarDateFull(isoDate) {
+  const parts = String(isoDate || '').split('-');
+  return parts.length === 3 ? `${parts[0]}.${parts[1]}.${parts[2]}.` : String(isoDate || '');
+}
+function raceDisplayTitle(r) {
+  const custom = (r?.custom_title || '').trim();
+  if (custom) return custom;
+  return r?.track_name || r?.session?.track_name || 'Ismeretlen futam';
+}
+function groupRaceWeekends(races) {
+  const raceEntries = [];
+  const qualis = [];
+  const others = [];
+
+  for (const r of races || []) {
+    if (isRaceSession(r.session_type)) {
+      raceEntries.push({ primary: r, attachedQualis: [], sortTime: r.recorded_at || '' });
+    } else if (isQualiSession(r.session_type)) {
+      qualis.push(r);
+    } else {
+      others.push(r);
+    }
+  }
+
+  const standalone = [];
+  for (const q of qualis) {
+    const qt = Date.parse(q.recorded_at || '');
+    const qGroup = (q.league_group || '').trim();
+    const qSim = Boolean(q.is_simulated);
+    const qTitle = (q.custom_title || '').trim().toLowerCase();
+
+    let bestEntry = null;
+    let bestScore = null;
+    for (const entry of raceEntries) {
+      const rr = entry.primary;
+      if (Number(rr.track_id) !== Number(q.track_id)) continue;
+      if ((rr.league_group || '').trim() !== qGroup) continue;
+      if (Boolean(rr.is_simulated) !== qSim) continue;
+      const rTitle = (rr.custom_title || '').trim().toLowerCase();
+      if (qTitle && rTitle && qTitle !== rTitle) continue;
+      const rt = Date.parse(rr.recorded_at || '');
+      if (!isFinite(qt) || !isFinite(rt)) continue;
+      const deltaMs = rt - qt;
+      if (deltaMs < -3600 * 1000 || deltaMs > 8 * 3600 * 1000) continue;
+
+      const score = [rr.laps_completed || 0, -Math.abs(deltaMs)];
+      if (
+        !bestScore
+        || score[0] > bestScore[0]
+        || (score[0] === bestScore[0] && score[1] > bestScore[1])
+      ) {
+        bestScore = score;
+        bestEntry = entry;
+      }
+    }
+
+    if (bestEntry) {
+      bestEntry.attachedQualis.push(q);
+    } else {
+      standalone.push({ primary: q, sessions: [q], sortTime: q.recorded_at || '' });
+    }
+  }
+
+  const out = raceEntries.map((entry) => {
+    const qualisChrono = [...entry.attachedQualis].sort(
+      (a, b) => Date.parse(a.recorded_at || '') - Date.parse(b.recorded_at || ''),
+    );
+    return {
+      primary: entry.primary,
+      sessions: [...qualisChrono, entry.primary],
+      sortTime: entry.sortTime,
+    };
+  });
+
+  for (const s of others) {
+    standalone.push({ primary: s, sessions: [s], sortTime: s.recorded_at || '' });
+  }
+
+  return [...out, ...standalone].sort((a, b) => (b.sortTime || '').localeCompare(a.sortTime || ''));
+}
 
 // --- js/api.js ---
 // REST API + statikus / beágyazott adat kliens
@@ -1387,36 +1496,111 @@ function renderStats(el, ctx) {
 }
 
 // --- js/views/raceList.js ---
-// Futamválasztó oldal
-async function renderRaceList(app, activeGroup = '') {
+// Versenynaptár + csoportosított hétvégék (Futam + Időmérő egy kártyán)
+async function renderRaceList(app, opts = {}) {
+  const roundSlug = typeof opts === 'string' ? '' : (opts?.roundSlug || '');
+  const activeGroup = typeof opts === 'string' ? opts : (opts?.activeGroup || '');
+
   app.innerHTML = `<div class="py-24 text-center text-slate-500">Futamok betöltése…</div>`;
   const allRaces = await api.listRaces();
   const groups = getLeagueGroups();
+  const calendar = getCalendar();
+  const calendarTrackIds = new Set(calendar.map((c) => Number(c.track_id)));
 
-  const countsByGroup = new Map();
-  for (const g of groups) countsByGroup.set(g, 0);
-  for (const r of allRaces) {
-    if (r.league_group && countsByGroup.has(r.league_group)) {
-      countsByGroup.set(r.league_group, countsByGroup.get(r.league_group) + 1);
+  const allWeekends = groupRaceWeekends(allRaces);
+  const weekendsByTrack = new Map();
+  let otherTrackCount = 0;
+  for (const w of allWeekends) {
+    const tid = Number(w.primary.track_id);
+    if (calendarTrackIds.has(tid)) {
+      weekendsByTrack.set(tid, (weekendsByTrack.get(tid) || 0) + 1);
+    } else {
+      otherTrackCount += 1;
     }
   }
 
-  const races = activeGroup ? allRaces.filter((r) => r.league_group === activeGroup) : allRaces;
+  const activeRound = roundSlug && roundSlug !== 'egyeb' ? calendarBySlug(roundSlug) : null;
+  const isOtherFilter = roundSlug === 'egyeb';
+
+  const roundRaces = activeRound
+    ? allRaces.filter((r) => Number(r.track_id) === Number(activeRound.track_id))
+    : (isOtherFilter
+      ? allRaces.filter((r) => !calendarTrackIds.has(Number(r.track_id)))
+      : allRaces);
+
+  const roundWeekends = groupRaceWeekends(roundRaces);
+  const countsByGroup = new Map();
+  for (const g of groups) countsByGroup.set(g, 0);
+  for (const w of roundWeekends) {
+    const grp = w.primary.league_group;
+    if (grp && countsByGroup.has(grp)) {
+      countsByGroup.set(grp, countsByGroup.get(grp) + 1);
+    }
+  }
+
+  const filteredRaces = activeGroup ? roundRaces.filter((r) => r.league_group === activeGroup) : roundRaces;
+  const weekends = groupRaceWeekends(filteredRaces);
+
+  const groupTabHref = (grp) => {
+    const gPart = grp ? `/csoport/${groupSlug(grp)}` : '';
+    if (roundSlug) return `#/naptar/${roundSlug}${gPart}`;
+    return grp ? `#/csoport/${groupSlug(grp)}` : '#/';
+  };
+
+  const calendarStrip = `
+    <div class="mb-5 fade-in">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="kicker">Bajnoki versenynaptár (${calendar.length} forduló)</div>
+        ${activeRound || isOtherFilter ? `<a href="#/" class="text-xs text-slate-400 hover:text-white">Mutasd az összes helyszínt →</a>` : ''}
+      </div>
+      <div class="cal-strip">
+        <a href="#/" class="cal-pill ${!roundSlug ? 'active' : ''}">
+          <span class="num text-[11px] font-bold text-slate-400">2026–27</span>
+          <div class="font-bold text-sm text-white mt-0.5">Összes futam</div>
+          <div class="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-400">
+            <span>Teljes archívum</span>
+            <span class="num px-1.5 py-0.5 rounded bg-white/10 text-slate-200">${allWeekends.length}</span>
+          </div>
+        </a>
+        ${calendar.map((c) => {
+          const cnt = weekendsByTrack.get(Number(c.track_id)) || 0;
+          const isOn = activeRound?.slug === c.slug;
+          const cls = isOn ? 'active' : (cnt === 0 ? 'upcoming' : '');
+          return `
+          <a href="#/naptar/${esc(c.slug)}" class="cal-pill ${cls}">
+            <div class="flex items-center justify-between gap-2">
+              <span class="num text-[11px] font-bold text-slate-400">#${c.round} · ${esc(fmtCalendarDate(c.date))}</span>
+              ${cnt > 0 ? `<span class="num text-[11px] px-1.5 py-0.5 rounded bg-f1red/20 text-red-200 font-bold">${cnt}</span>` : `<span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>`}
+            </div>
+            <div class="font-bold text-sm text-white truncate mt-0.5">${esc(c.circuit || c.label)}</div>
+            <div class="text-[11px] text-slate-400 truncate">${esc(c.country || '')}</div>
+          </a>`;
+        }).join('')}
+        ${otherTrackCount > 0 ? `
+        <a href="#/naptar/egyeb" class="cal-pill ${isOtherFilter ? 'active' : ''}">
+          <span class="num text-[11px] font-bold text-slate-400">Egyéb</span>
+          <div class="font-bold text-sm text-white mt-0.5">Más pályák</div>
+          <div class="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-400">
+            <span>Naptáron kívül</span>
+            <span class="num px-1.5 py-0.5 rounded bg-white/10 text-slate-200">${otherTrackCount}</span>
+          </div>
+        </a>` : ''}
+      </div>
+    </div>`;
 
   const groupTabs = `
     <div class="border-b border-white/10 mb-5 overflow-x-auto">
       <nav class="flex gap-1 md:gap-3 -mb-px">
-        <a href="#/" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${!activeGroup ? 'active' : ''}">
+        <a href="${groupTabHref('')}" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${!activeGroup ? 'active' : ''}">
           <span>Összes</span>
-          <span class="num text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${allRaces.length}</span>
+          <span class="num text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${roundWeekends.length}</span>
         </a>
         ${groups.map((g) => {
-          const slug = groupSlug(g);
           const count = countsByGroup.get(g) || 0;
           const st = groupColor(g);
           const isOn = activeGroup === g;
           return `
-          <a href="#/csoport/${slug}" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${isOn ? 'active' : ''}">
+          <a href="${groupTabHref(g)}" class="tab-btn px-3 py-2.5 font-bold text-sm md:text-base flex items-center gap-2 ${isOn ? 'active' : ''}">
             <span class="w-2 h-2 rounded-full" style="background:${st?.hex || '#94a3b8'}"></span>
             <span>${esc(g)}</span>
             <span class="num text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${count}</span>
@@ -1425,19 +1609,41 @@ async function renderRaceList(app, activeGroup = '') {
       </nav>
     </div>`;
 
+  let pageKicker = 'Futamarchívum';
+  let pageTitle = activeGroup ? esc(activeGroup) : 'Rögzített futamok';
+  let pageSub = 'Válassz egy versenyt a részletes eredményekhez, köridőkhöz és gumistratégiákhoz.';
+  if (activeRound) {
+    pageKicker = `${activeRound.round}. forduló · ${fmtCalendarDateFull(activeRound.date)}`;
+    pageTitle = activeGroup ? `${esc(activeRound.label)} · ${esc(activeGroup)}` : esc(activeRound.label);
+    pageSub = 'Csoportok eredményei ezen a helyszínen — kattints bármelyik futamra vagy időmérőre.';
+  } else if (isOtherFilter) {
+    pageKicker = 'Naptáron kívüli pályák';
+    pageTitle = activeGroup ? `Más pályák · ${esc(activeGroup)}` : 'Más pályák';
+  }
+
   const header = `
+    ${calendarStrip}
     <div class="flex flex-wrap items-end justify-between gap-4 mb-5 fade-in">
       <div>
-        <div class="kicker">Futamarchívum</div>
-        <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight">${activeGroup ? esc(activeGroup) : 'Rögzített futamok'}</h1>
-        <p class="text-slate-400 mt-1">Válassz egy versenyt a részletes eredményekhez, köridőkhöz és gumistratégiákhoz.</p>
+        <div class="kicker">${pageKicker}</div>
+        <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight">${pageTitle}</h1>
+        <p class="text-slate-400 mt-1">${pageSub}</p>
       </div>
-      <div class="panel px-4 py-2 text-sm"><span class="text-slate-400">${activeGroup ? 'Csoport futamai:' : 'Összesen:'}</span>
-        <span class="num text-white font-bold ml-1">${races.length}</span> <span class="text-slate-400">szakasz</span></div>
+      <div class="panel px-4 py-2 text-sm"><span class="text-slate-400">${activeGroup ? 'Csoport futamai:' : 'Megjelenítve:'}</span>
+        <span class="num text-white font-bold ml-1">${weekends.length}</span> <span class="text-slate-400">hétvége</span></div>
     </div>
     ${groupTabs}`;
 
-  if (!races.length) {
+  if (!weekends.length) {
+    if (activeRound) {
+      app.innerHTML = header + emptyState(
+        `${activeRound.label} (${fmtCalendarDateFull(activeRound.date)}) – még nincs rögzített futam`,
+        activeGroup
+          ? `A ${esc(activeGroup)} csoportból még nem érkezett adat erre a helyszínre.`
+          : 'Amint feltöltésre kerül az időmérő vagy a verseny, itt fog megjelenni csoportonként.',
+      );
+      return;
+    }
     if (activeGroup) {
       app.innerHTML = header + emptyState(`${activeGroup} – még nincs rögzített futam`,
         'Amint feltöltésre kerül ebbe a csoportba egy időmérő vagy verseny, itt fog megjelenni.');
@@ -1448,55 +1654,88 @@ async function renderRaceList(app, activeGroup = '') {
     return;
   }
 
-  const rows = races.map((r, i) => {
+  const rows = weekends.map((entry, i) => {
+    const r = entry.primary;
     const color = teamColor(r.winner_team);
     const isRace = isRaceSession(r.session_type);
     const isQuali = isQualiSession(r.session_type);
     const progress = isRace && r.total_laps ? `${r.laps_completed}/${r.total_laps}` : r.laps_completed;
     const winnerLabel = isRace ? 'Győztes' : (isQuali ? 'Pole pozíció' : 'Leggyorsabb');
+    const title = raceDisplayTitle(r);
+    const hasCustomTitle = Boolean((r.custom_title || '').trim()) && title !== r.track_name;
+
+    const sessionPills = entry.sessions.length > 1
+      ? `<div class="session-bar">
+          <span class="text-[11px] uppercase tracking-wider font-bold text-slate-500 mr-1">Szakaszok:</span>
+          ${entry.sessions.map((sess) => {
+            if (isQualiSession(sess.session_type)) {
+              return `<a href="#/race/${esc(sess.session_uid)}" class="session-pill session-pill-quali">
+                <span>⏱️</span>
+                <span class="font-bold">${esc(sess.session_type_name)}</span>
+                <span class="opacity-80">· Pole: ${esc(sess.winner_name || '—')}</span>
+                ${sess.fastest_lap_ms ? `<span class="num opacity-90">· ${fmtLap(sess.fastest_lap_ms)}</span>` : ''}
+              </a>`;
+            }
+            const sLaps = isRaceSession(sess.session_type) && sess.total_laps
+              ? `${sess.laps_completed}/${sess.total_laps} kör`
+              : `${sess.laps_completed} kör`;
+            return `<a href="#/race/${esc(sess.session_uid)}" class="session-pill session-pill-race">
+              <span>🏁</span>
+              <span class="font-bold">${esc(sess.session_type_name)}</span>
+              <span class="opacity-80">· Győztes: ${esc(sess.winner_name || '—')}</span>
+              <span class="num opacity-90">· ${esc(sLaps)}</span>
+            </a>`;
+          }).join('')}
+        </div>`
+      : '';
+
     return `
-    <a href="#/race/${esc(r.session_uid)}" class="race-row panel block p-4 md:p-5 fade-in" style="animation-delay:${Math.min(i, 10) * 25}ms">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
-        <div class="md:col-span-4 min-w-0">
-          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-            <span>${esc(fmtDate(r.recorded_at))}</span>
-            ${groupBadge(r.league_group)}
-            <span class="px-1.5 py-0.5 rounded bg-f1red/15 text-red-300 font-bold uppercase tracking-wider text-[10px]">${esc(r.session_type_name)}</span>
-          </div>
-          <div class="text-xl font-black text-white truncate mt-0.5">${esc(r.track_name)}</div>
-        </div>
-        <div class="md:col-span-3 flex items-center gap-3 min-w-0">
-          <span class="team-bar !h-9" style="background:${color}"></span>
-          <div class="min-w-0">
-            <div class="kicker !text-[10px]">${winnerLabel}</div>
-            <div class="font-bold text-white truncate">${esc(r.winner_name || '—')}</div>
-            <div class="text-xs text-slate-400 truncate">${esc(r.winner_team || '')}</div>
-          </div>
-        </div>
-        <div class="md:col-span-2">
-          <div class="kicker !text-[10px]">Körök</div>
-          <div class="num text-white font-bold">${esc(progress)}</div>
-          <div class="text-xs text-slate-400">${esc(r.num_drivers)} pilóta</div>
-        </div>
-        <div class="md:col-span-3 flex md:justify-end">
-          ${r.fastest_lap_ms ? `
-          <div class="inline-flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/10 px-3 py-2 text-purple-200" title="Leggyorsabb kör">
-            ${stopwatchIcon('w-5 h-5 text-purple-300')}
-            <div class="leading-tight">
-              <div class="num font-bold text-purple-100">${fmtLap(r.fastest_lap_ms)}</div>
-              <div class="text-xs truncate max-w-[11rem]">${esc(r.fastest_lap_driver)}</div>
+    <div class="race-row panel overflow-hidden fade-in" style="animation-delay:${Math.min(i, 10) * 25}ms">
+      <a href="#/race/${esc(r.session_uid)}" class="block p-4 md:p-5 hover:bg-white/[0.02]">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
+          <div class="md:col-span-4 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span>${esc(fmtDate(r.recorded_at))}</span>
+              ${groupBadge(r.league_group)}
+              <span class="px-1.5 py-0.5 rounded bg-f1red/15 text-red-300 font-bold uppercase tracking-wider text-[10px]">${esc(r.session_type_name)}</span>
             </div>
-          </div>` : ''}
+            <div class="text-xl font-black text-white truncate mt-0.5">${esc(title)}</div>
+            ${hasCustomTitle ? `<div class="text-xs text-slate-400 truncate">${esc(r.track_name)}</div>` : ''}
+          </div>
+          <div class="md:col-span-3 flex items-center gap-3 min-w-0">
+            <span class="team-bar !h-9" style="background:${color}"></span>
+            <div class="min-w-0">
+              <div class="kicker !text-[10px]">${winnerLabel}</div>
+              <div class="font-bold text-white truncate">${esc(r.winner_name || '—')}</div>
+              <div class="text-xs text-slate-400 truncate">${esc(r.winner_team || '')}</div>
+            </div>
+          </div>
+          <div class="md:col-span-2">
+            <div class="kicker !text-[10px]">Körök</div>
+            <div class="num text-white font-bold">${esc(progress)}</div>
+            <div class="text-xs text-slate-400">${esc(r.num_drivers)} pilóta</div>
+          </div>
+          <div class="md:col-span-3 flex md:justify-end">
+            ${r.fastest_lap_ms ? `
+            <div class="inline-flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/10 px-3 py-2 text-purple-200" title="Leggyorsabb kör">
+              ${stopwatchIcon('w-5 h-5 text-purple-300')}
+              <div class="leading-tight">
+                <div class="num font-bold text-purple-100">${fmtLap(r.fastest_lap_ms)}</div>
+                <div class="text-xs truncate max-w-[11rem]">${esc(r.fastest_lap_driver)}</div>
+              </div>
+            </div>` : ''}
+          </div>
         </div>
-      </div>
-    </a>`;
+      </a>
+      ${sessionPills}
+    </div>`;
   }).join('');
 
   app.innerHTML = header + `<div class="flex flex-col gap-3">${rows}</div>`;
 }
 
 // --- js/views/raceDetail.js ---
-// Verseny részletező: fejléc + 4 fül
+// Verseny részletező: fejléc + hétvége szakaszváltó + fülek
 
 
 
@@ -1515,19 +1754,30 @@ const TABS = [
   { id: 'statisztika', label: 'Statisztikák', render: renderStats },
 ];
 
-let cache = { uid: null, ctx: null, summary: null };
+let cache = { uid: null, ctx: null, summary: null, roundObj: null, weekendSessions: [] };
 let cleanup = null;
 async function renderRaceDetail(app, uid, tabId) {
   if (cache.uid !== uid) {
     app.innerHTML = `<div class="py-24 text-center text-slate-500">Futam betöltése…</div>`;
-    const res = await api.getRace(uid);
-    cache = { uid, ctx: buildContext(res.data), summary: res.summary };
+    const [res, allRaces] = await Promise.all([
+      api.getRace(uid),
+      api.listRaces().catch(() => []),
+    ]);
+    const roundObj = calendarForTrackId(res.data?.session?.track_id);
+    const matched = groupRaceWeekends(allRaces).find((w) => w.sessions.some((s) => String(s.session_uid) === String(uid)));
+    cache = {
+      uid,
+      ctx: buildContext(res.data),
+      summary: res.summary,
+      roundObj,
+      weekendSessions: matched ? matched.sessions : [],
+    };
   }
   const visibleTabs = TABS.filter((t) => !t.raceOnly || cache.ctx.isRace);
   const tab = visibleTabs.find((t) => t.id === tabId) || visibleTabs[0];
 
   if (!app.querySelector(`[data-race-shell="${uid}"]`)) {
-    app.innerHTML = shell(cache.ctx, cache.summary, uid, visibleTabs);
+    app.innerHTML = shell(cache.ctx, cache.summary, uid, visibleTabs, cache.roundObj, cache.weekendSessions);
   }
 
   app.querySelectorAll('[data-tab]').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab.id));
@@ -1546,7 +1796,7 @@ function stat(label, value, sub = '', extra = '') {
   </div>`;
 }
 
-function shell(ctx, summary, uid, visibleTabs) {
+function shell(ctx, summary, uid, visibleTabs, roundObj, weekendSessions) {
   const { race, leader, fastest, isRace, isQuali } = ctx;
   const s = race.session;
   const temps = [s.air_temperature != null ? `Levegő ${s.air_temperature}°C` : '', s.track_temperature != null ? `Aszfalt ${s.track_temperature}°C` : '']
@@ -1557,12 +1807,36 @@ function shell(ctx, summary, uid, visibleTabs) {
   const lapsValue = isRace && s.total_laps ? `${summary.laps_completed} / ${s.total_laps}` : `${summary.laps_completed}`;
 
   const groupSlugStr = race.league_group ? groupSlug(race.league_group) : '';
+  const groupHref = roundObj && groupSlugStr
+    ? `#/naptar/${esc(roundObj.slug)}/csoport/${groupSlugStr}`
+    : (groupSlugStr ? `#/csoport/${groupSlugStr}` : '#/');
+
+  const title = raceDisplayTitle({ ...race, track_name: s.track_name });
+  const hasCustomTitle = Boolean((race.custom_title || '').trim()) && title !== s.track_name;
+
+  const sessionSwitcher = weekendSessions.length > 1
+    ? `<div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-xs text-slate-500 mr-1">Hétvége:</span>
+        ${weekendSessions.map((sess) => {
+          const isCur = String(sess.session_uid) === String(uid);
+          const cls = isQualiSession(sess.session_type) ? 'session-pill-quali' : 'session-pill-race';
+          const icon = isQualiSession(sess.session_type) ? '⏱️' : '🏁';
+          return `<a href="#/race/${esc(sess.session_uid)}" class="session-pill ${cls} ${isCur ? 'active' : ''}">
+            <span>${icon}</span><span>${esc(sess.session_type_name)}</span>
+          </a>`;
+        }).join('')}
+      </div>`
+    : '';
 
   return `
   <div data-race-shell="${esc(uid)}">
-    <div class="flex flex-wrap items-center gap-2 text-sm text-slate-400 mb-4">
-      <a href="#/" class="hover:text-white">← Összes futam</a>
-      ${groupSlugStr ? `<span>·</span><a href="#/csoport/${groupSlugStr}" class="hover:text-white">${esc(race.league_group)}</a>` : ''}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+        <a href="#/" class="hover:text-white">← Versenynaptár</a>
+        ${roundObj ? `<span>·</span><a href="#/naptar/${esc(roundObj.slug)}" class="hover:text-white">${esc(roundObj.label)}</a>` : ''}
+        ${groupSlugStr ? `<span>·</span><a href="${groupHref}" class="hover:text-white">${esc(race.league_group)}</a>` : ''}
+      </div>
+      ${sessionSwitcher}
     </div>
 
     <div class="panel relative overflow-hidden p-5 md:p-6 mb-4">
@@ -1576,7 +1850,8 @@ function shell(ctx, summary, uid, visibleTabs) {
             <span>${esc(fmtDate(race.recorded_at))}</span>
             <span class="hidden sm:inline">· UID <span class="num">${esc(race.session_uid)}</span></span>
           </div>
-          <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight mt-1">${esc(s.track_name)}</h1>
+          <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight mt-1">${esc(title)}</h1>
+          ${hasCustomTitle ? `<div class="text-sm text-slate-400 mt-1">${esc(s.track_name)}</div>` : ''}
         </div>
         <div class="text-right text-sm text-slate-400">
           <div class="text-2xl">${WEATHER_ICONS[s.weather] || ''} <span class="text-base text-slate-200 font-semibold align-middle">${esc(s.weather_name)}</span></div>
@@ -1607,9 +1882,11 @@ function shell(ctx, summary, uid, visibleTabs) {
 
 // --- js/app.js ---
 // Belépési pont: egyszerű hash-alapú router
-//   #/                  → összes futam
-//   #/csoport/<sorszám> → csoport futamai
-//   #/race/<uid>/<fül>  → verseny részletező
+//   #/                               → összes futam (naptár tetején)
+//   #/csoport/<sorszám>              → csoport futamai
+//   #/naptar/<slug>                  → naptárhelyszín (4 csoporttal)
+//   #/naptar/<slug>/csoport/<sorsz.> → naptárhelyszín + csoport
+//   #/race/<uid>/<fül>               → verseny részletező
 
 
 
@@ -1626,19 +1903,33 @@ let lastView = '';
 async function route() {
   const hash = location.hash || '#/';
   const m = hash.match(/^#\/race\/(\d+)(?:\/([a-z]+))?/);
+  const calGrp = hash.match(/^#\/naptar\/([a-z0-9-]+)(?:\/csoport\/(\d+))?(?:\/)?$/);
   const cg = hash.match(/^#\/csoport\/(\d+)(?:\/)?$/);
-  const view = m ? `race:${m[1]}` : (cg ? `group:${cg[1]}` : 'list');
+  const view = m
+    ? `race:${m[1]}`
+    : (calGrp ? `cal:${calGrp[1]}:${calGrp[2] || ''}` : (cg ? `group:${cg[1]}` : 'list'));
   if (view !== lastView) window.scrollTo({ top: 0 });
   lastView = view;
   try {
-    if (m) await renderRaceDetail(app, m[1], m[2] || 'eredmeny');
-    else await renderRaceList(app, cg ? groupFromSlug(cg[1]) : '');
+    if (m) {
+      await renderRaceDetail(app, m[1], m[2] || 'eredmeny');
+    } else if (calGrp) {
+      await renderRaceList(app, {
+        roundSlug: calGrp[1],
+        activeGroup: calGrp[2] ? groupFromSlug(calGrp[2]) : '',
+      });
+    } else {
+      await renderRaceList(app, {
+        roundSlug: '',
+        activeGroup: cg ? groupFromSlug(cg[1]) : '',
+      });
+    }
   } catch (err) {
     console.error(err);
     app.innerHTML = `<div class="panel p-8 border-red-500/30">
       <div class="text-red-400 font-bold text-lg">Hiba történt</div>
       <div class="text-slate-400 mt-1">${esc(err.message)}</div>
-      <a href="#/" class="inline-block mt-4 text-sm text-white bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-md">← Vissza a futamokhoz</a>
+      <a href="#/" class="inline-block mt-4 text-sm text-white bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-md">← Vissza a versenynaptárhoz</a>
     </div>`;
   }
 }
