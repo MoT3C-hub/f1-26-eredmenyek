@@ -315,6 +315,13 @@ function groupRaceWeekends(races) {
 
   return [...out, ...standalone].sort((a, b) => (b.sortTime || '').localeCompare(a.sortTime || ''));
 }
+function sessionTypeLabel(sessionType, sessionTypeName) {
+  const raw = String(sessionTypeName || '').trim();
+  if (Number(sessionType) === 8 || raw.toLowerCase() === 'rövid időmérő') {
+    return 'Időmérő';
+  }
+  return raw || 'Szakasz';
+}
 
 // --- js/api.js ---
 // REST API + statikus / beágyazott adat kliens
@@ -1774,10 +1781,10 @@ async function renderRaceList(app, opts = {}) {
     const showSub = !hasRedundantTrackSubtitle(r.custom_title, r.track_name, roundOfCard);
     const progress = isRace && r.total_laps ? `${r.laps_completed}/${r.total_laps}` : `${r.laps_completed}`;
     const kindPill = isQuali
-      ? `<span class="px-2 py-0.5 rounded bg-purple-600 text-white font-bold uppercase tracking-wider text-xs">${esc(r.session_type_name)}</span>`
+      ? `<span class="px-2 py-0.5 rounded bg-purple-600 text-white font-bold uppercase tracking-wider text-xs">${esc(sessionTypeLabel(r.session_type, r.session_type_name))}</span>`
       : (isRace
         ? `<span class="px-2 py-0.5 rounded bg-f1red text-white font-bold uppercase tracking-wider text-xs">Éles futam</span>`
-        : `<span class="px-2 py-0.5 rounded bg-slate-700 text-white font-bold uppercase tracking-wider text-xs">${esc(r.session_type_name)}</span>`);
+        : `<span class="px-2 py-0.5 rounded bg-slate-700 text-white font-bold uppercase tracking-wider text-xs">${esc(sessionTypeLabel(r.session_type, r.session_type_name))}</span>`);
 
     let middleBoxHtml = '';
     if (mainQuali) {
@@ -1847,7 +1854,7 @@ async function renderRaceList(app, opts = {}) {
           </a>
           ${qualis.map((q) => `
           <a href="#/race/${esc(q.session_uid)}" class="w-full py-1.5 px-3 rounded-lg border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-purple-200 text-xs font-semibold text-center transition">
-            ⏱ ${esc(q.session_type_name)} megnyitása
+            ⏱ ${esc(sessionTypeLabel(q.session_type, q.session_type_name))} megnyitása
           </a>`).join('')}
         </div>
       </div>
@@ -1880,7 +1887,7 @@ async function renderRaceList(app, opts = {}) {
               <a href="#/race/${esc(q.session_uid)}" class="px-2.5 py-1.5 rounded-lg border border-purple-500/35 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 font-semibold inline-flex items-center gap-1.5 transition" title="Időmérő (${esc(q.winner_name || '')})">
                 <span>⏱</span>
                 <span class="w-1.5 h-3 rounded-full inline-block" style="background:${teamColor(q.winner_team)}"></span>
-                <span>${esc(q.winner_name || q.session_type_name)}</span>
+                <span>${esc(q.winner_name || sessionTypeLabel(q.session_type, q.session_type_name))}</span>
                 ${q.fastest_lap_ms ? `<span class="num opacity-90">· ${fmtLap(q.fastest_lap_ms)}</span>` : ''}
               </a>`).join('')}
               <a href="#/race/${esc(r.session_uid)}" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition">
@@ -1984,7 +1991,7 @@ function shell(ctx, summary, uid, visibleTabs, roundObj, weekendSessions) {
           const cls = isQualiSession(sess.session_type) ? 'session-pill-quali' : 'session-pill-race';
           const icon = isQualiSession(sess.session_type) ? '⏱️' : '🏁';
           return `<a href="#/race/${esc(sess.session_uid)}" class="session-pill ${cls} ${isCur ? 'active' : ''}">
-            <span>${icon}</span><span>${esc(sess.session_type_name)}</span>
+            <span>${icon}</span><span>${esc(sessionTypeLabel(sess.session_type, sess.session_type_name))}</span>
           </a>`;
         }).join('')}
       </div>`
@@ -2008,7 +2015,7 @@ function shell(ctx, summary, uid, visibleTabs, roundObj, weekendSessions) {
         <div>
           <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
             ${groupBadge(race.league_group)}
-            <span class="px-1.5 py-0.5 rounded bg-f1red text-white font-bold uppercase tracking-wider text-[10px]">${esc(s.session_type_name)}</span>
+            <span class="px-1.5 py-0.5 rounded bg-f1red text-white font-bold uppercase tracking-wider text-[10px]">${esc(sessionTypeLabel(s.session_type, s.session_type_name))}</span>
             <span>${esc(fmtDate(race.recorded_at))}</span>
             <span class="hidden sm:inline">· UID <span class="num">${esc(race.session_uid)}</span></span>
           </div>
