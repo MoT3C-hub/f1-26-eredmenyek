@@ -93,34 +93,65 @@ details[open] .chev { transform: rotate(90deg); }
 .race-row { transition: transform .12s, border-color .12s, background .12s; }
 .race-row:hover { transform: translateY(-1px); border-color: rgba(225, 6, 0, .45); }
 
-/* Bajnoki versenynaptár felső menüsáv */
-.cal-strip {
-  display: flex; gap: .55rem; overflow-x: auto; padding-bottom: .45rem;
-  scrollbar-width: thin; scrollbar-color: #2a3244 transparent;
+/* #3 F1 Broadcast sáv + lenyitható 25-ös versenynaptár */
+.cal-nav-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .55rem .75rem; border-radius: .9rem;
+  background: linear-gradient(180deg, rgba(24, 30, 44, .75), rgba(14, 17, 26, .9));
+  border: 1px solid rgba(255, 255, 255, .08);
 }
-.cal-pill {
-  flex: 0 0 auto; min-width: 118px; display: flex; flex-direction: column; justify-content: space-between;
-  padding: .55rem .8rem; border-radius: .75rem;
-  border: 1px solid rgba(255, 255, 255, .07);
-  background: linear-gradient(180deg, rgba(22, 26, 37, .75), rgba(16, 19, 27, .85));
-  transition: transform .12s, border-color .12s, background .12s, box-shadow .12s;
+.cal-nav-step {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .35rem .6rem; border-radius: .55rem; font-size: .78rem;
+  background: rgba(255, 255, 255, .04); color: #cbd5e1;
+  transition: background .12s, color .12s;
 }
-.cal-pill:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, .22); }
-.cal-pill.upcoming { opacity: .68; }
-.cal-pill.upcoming:hover { opacity: 1; }
-.cal-pill.active {
-  opacity: 1; border-color: #e10600;
-  background: linear-gradient(180deg, rgba(225, 6, 0, .18), rgba(22, 26, 37, .92));
-  box-shadow: 0 0 0 1px rgba(225, 6, 0, .45);
+.cal-nav-step:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+.cal-nav-trigger {
+  display: inline-flex; align-items: center; gap: .6rem;
+  padding: .4rem .85rem; border-radius: .65rem; font-size: .82rem; font-weight: 700;
+  background: rgba(225, 6, 0, .15); border: 1px solid rgba(225, 6, 0, .5); color: #fff;
+  transition: background .12s, border-color .12s; cursor: pointer;
+}
+.cal-nav-trigger:hover { background: rgba(225, 6, 0, .24); border-color: #e10600; }
+.cal-drawer {
+  margin-top: .65rem; padding: .85rem; border-radius: .9rem;
+  background: rgba(16, 19, 27, .92); border: 1px solid rgba(255, 255, 255, .09);
+}
+.cal-drawer-item {
+  display: flex; align-items: center; justify-content: space-between; gap: .45rem;
+  padding: .45rem .65rem; border-radius: .6rem; font-size: .78rem;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .015); color: #94a3b8;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.cal-drawer-item:hover { border-color: rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .06); color: #fff; }
+.cal-drawer-item.has-data { border-color: rgba(255, 255, 255, .15); background: rgba(255, 255, 255, .05); color: #f1f5f9; }
+.cal-drawer-item.active { border-color: #e10600; background: rgba(225, 6, 0, .2); color: #fff; font-weight: 700; }
+
+/* Szegmentált csoportválasztó */
+.group-seg {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: .3rem;
+  padding: .28rem; border-radius: .8rem;
+  background: #0d111a; border: 1px solid rgba(255, 255, 255, .09);
+}
+.group-seg-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .35rem .7rem; border-radius: .55rem; font-size: .78rem; font-weight: 700;
+  color: #94a3b8; transition: background .12s, color .12s; white-space: nowrap;
+}
+.group-seg-btn:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+.group-seg-btn.active { color: #fff; background: rgba(255, 255, 255, .14); }
+
+/* Kiemelt Éles futam Spotlight kártya */
+.spotlight-card {
+  background: linear-gradient(135deg, rgba(225, 6, 0, .14) 0%, rgba(24, 30, 44, .85) 38%, rgba(14, 17, 26, .95) 100%);
+  border: 1px solid rgba(225, 6, 0, .40);
+  border-radius: 1rem;
+  box-shadow: 0 14px 32px -18px rgba(225, 6, 0, .45);
 }
 
-/* Összefűzött hétvége-sáv (Időmérő + Futam egy kártyán) */
-.session-bar {
-  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, .06);
-  background: rgba(10, 12, 18, .45);
-  padding: .6rem 1rem;
-}
+/* Összefűzött hétvége-sáv / részletező váltó */
 .session-pill {
   display: inline-flex; align-items: center; gap: .45rem;
   padding: .35rem .7rem; border-radius: .55rem; font-size: .78rem;
@@ -129,10 +160,10 @@ details[open] .chev { transform: rotate(90deg); }
   transition: border-color .12s, background .12s, color .12s;
 }
 .session-pill:hover { border-color: rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .07); color: #fff; }
-.session-pill-quali { border-color: rgba(168, 85, 247, .32); background: rgba(168, 85, 247, .08); color: #e9d5ff; }
-.session-pill-quali:hover { border-color: rgba(168, 85, 247, .65); background: rgba(168, 85, 247, .16); }
-.session-pill-race { border-color: rgba(225, 6, 0, .35); background: rgba(225, 6, 0, .09); color: #fecaca; }
-.session-pill-race:hover { border-color: rgba(225, 6, 0, .7); background: rgba(225, 6, 0, .18); }
+.session-pill-quali { border-color: rgba(168, 85, 247, .35); background: rgba(168, 85, 247, .10); color: #e9d5ff; }
+.session-pill-quali:hover { border-color: rgba(168, 85, 247, .70); background: rgba(168, 85, 247, .20); }
+.session-pill-race { border-color: rgba(225, 6, 0, .38); background: rgba(225, 6, 0, .10); color: #fecaca; }
+.session-pill-race:hover { border-color: rgba(225, 6, 0, .75); background: rgba(225, 6, 0, .20); }
 .session-pill.active { box-shadow: 0 0 0 1px currentColor; color: #fff; font-weight: 700; }
 
 ::-webkit-scrollbar { height: 10px; width: 10px; }
